@@ -47,13 +47,13 @@ void setup() {
   Wire.begin();
   Wire.beginTransmission(0x27);
   error = Wire.endTransmission();
-  Serial.print("Error: ");
-  Serial.print(error);
 
   if (error == 0) {
-    Serial.println(": LCD found.");
+    Serial.println("LCD found.");
 
   } else {
+    Serial.print("Error: ");
+    Serial.print(error);
     Serial.println(": LCD not found.");
   } // if
 
