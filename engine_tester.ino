@@ -15,6 +15,11 @@ uint16_t prev_pwm_value;
 
 boolean prev_key1, prev_key2, prev_key3;
 
+char line1[17] = "U=12.0V I=1.5A   ";
+char line2[17] = "PWM=1000    STOP";
+
+char stop_line[] = "STOP";
+
 void setup() {
   int error;
 
@@ -91,21 +96,32 @@ void loop() {
   uint16_t inU = analogRead(0);
   uint16_t inI = analogRead(1);
   float realU = float(inU) * 0.0454;
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("U=");
-  lcd.print(realU,1);
-  lcd.print("V");
-  lcd.setCursor(8, 0);
-  lcd.print("I=");
-  lcd.print(inI);
-  lcd.setCursor(0, 1);
-  lcd.print("PWM=");
-  lcd.print(pwm_value);
+  float realI = float(inI) * 0.0776;
+
+  dtostrf(realU, 4, 1, line1 + 2);
+  line1[6] = 'V';
+
+  dtostrf(realI, 4, 1, line1 + 10);
+  line1[14] = 'A';
+
+  for (uint8_t i = 4; i < 17; i++) line2[i] = ' ';
+  itoa(pwm_value, line2 + 4, 10);
+  for (uint8_t i = 0; i < 17; i++) if (line2[i] == 0) line2[i] = ' ';
+
   if (now_key3 == HIGH) {
-    lcd.setCursor(12,1);
-    lcd.print("STOP");
+    uint8_t i = 0;
+    while (stop_line[i] != 0) {
+      line2[i+12] = stop_line[i];
+      i++;
+    }
+  } else {
+    for (uint8_t i = 12; i < 17; i++) line2[i] = ' ';
   }
+
+  lcd.setCursor(0, 0);
+  lcd.print(line1);
+  lcd.setCursor(0, 1);
+  lcd.print(line2);
 
   delay(100);
 }
