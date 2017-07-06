@@ -15,8 +15,8 @@ uint16_t prev_pwm_value;
 
 boolean prev_key1, prev_key2, prev_key3;
 
-char line1[17] = "U=12.0V I=1.5A   ";
-char line2[17] = "PWM=1000    STOP";
+char line1[17] = "U=12.0V I=1.5A   \0";
+char line2[17] = "PWM=1000    STOP\0";
 
 char stop_line[] = "STOP";
 
@@ -44,7 +44,6 @@ void setup() {
 
   Serial.println("Dose: check for LCD");
 
-  // See http://playground.arduino.cc/Main/I2cScanner
   Wire.begin();
   Wire.beginTransmission(0x27);
   error = Wire.endTransmission();
@@ -104,9 +103,9 @@ void loop() {
   dtostrf(realI, 4, 1, line1 + 10);
   line1[14] = 'A';
 
-  for (uint8_t i = 4; i < 17; i++) line2[i] = ' ';
+  for (uint8_t i = 4; i < 16; i++) line2[i] = ' ';
   itoa(pwm_value, line2 + 4, 10);
-  for (uint8_t i = 0; i < 17; i++) if (line2[i] == 0) line2[i] = ' ';
+  for (uint8_t i = 0; i < 16; i++) if (line2[i] == 0) line2[i] = ' ';
 
   if (now_key3 == HIGH) {
     uint8_t i = 0;
@@ -115,13 +114,20 @@ void loop() {
       i++;
     }
   } else {
-    for (uint8_t i = 12; i < 17; i++) line2[i] = ' ';
+    for (uint8_t i = 12; i < 16; i++) line2[i] = ' ';
   }
 
+  line1[16] = 0;
+  line2[16] = 0;
+  
   lcd.setCursor(0, 0);
   lcd.print(line1);
   lcd.setCursor(0, 1);
   lcd.print(line2);
 
+  Serial.print(line1);
+  Serial.print(" ");
+  Serial.println(line2);
+  
   delay(100);
 }
