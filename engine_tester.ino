@@ -72,6 +72,7 @@ void loop() {
   if (now_key1 != prev_key1) {
     if (now_key1 == LOW) {
       if (pwm_value >= 1000) pwm_value -= 100;
+      else pwm_value = 900;
     }
     prev_key1 = now_key1;
   }
@@ -80,6 +81,7 @@ void loop() {
   if (now_key2 != prev_key2) {
     if (now_key2 == LOW) {
       if (pwm_value <= 2000) pwm_value += 100;
+      else pwm_value = 2100;
     }
     prev_key2 = now_key2;
   }
@@ -110,7 +112,7 @@ void loop() {
   if (now_key3 == HIGH) {
     uint8_t i = 0;
     while (stop_line[i] != 0) {
-      line2[i+12] = stop_line[i];
+      line2[i + 12] = stop_line[i];
       i++;
     }
   } else {
@@ -119,7 +121,7 @@ void loop() {
 
   line1[16] = 0;
   line2[16] = 0;
-  
+
   lcd.setCursor(0, 0);
   lcd.print(line1);
   lcd.setCursor(0, 1);
@@ -128,6 +130,21 @@ void loop() {
   Serial.print(line1);
   Serial.print(" ");
   Serial.println(line2);
-  
+
+  if (Serial.available() > 0) {
+    static uint16_t ser_pwm_value = 0;
+    char inchar = Serial.read();
+    if (isDigit(inchar)) {
+      ser_pwm_value *= 10;
+      ser_pwm_value += inchar - '0';
+    } else {
+      if (inchar == '\r') {
+        if ((ser_pwm_value >= 900) && (ser_pwm_value <= 2100))
+          pwm_value = ser_pwm_value;
+      }
+      ser_pwm_value = 0;
+    }
+  }
+
   delay(100);
 }
