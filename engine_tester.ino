@@ -10,7 +10,6 @@ LiquidCrystal_PCF8574 lcd(0x27);  // set the LCD address to 0x27 for a 16 chars 
 
 Servo Engine;  // create servo object to control a servo
 
-// for test
 uint16_t pwm_value;
 uint16_t prev_pwm_value;
 
