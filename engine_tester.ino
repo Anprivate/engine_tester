@@ -1,10 +1,25 @@
+#include <Key.h>
+#include <Keypad.h>
+
 #include <Wire.h>
 #include <LiquidCrystal_PCF8574.h>
 #include <Servo.h>
 
-#define key_down 4
-#define key_up 3
-#define key_stop 2
+#include <Q2HX711.h>
+
+const byte key_down = 4;
+const byte key_up = 3;
+const byte key_stop = 2;
+
+const byte hx_data_pin = 5;
+const byte hx_clock_pin = 6;
+
+const uint16_t hx_scaler = 500;
+int32_t hx_zero_value;
+int32_t hx_zero_summ = 0;
+int8_t hx_sample_counter = 0;
+
+Q2HX711 hx711(hx_data_pin, hx_clock_pin);
 
 LiquidCrystal_PCF8574 lcd(0x27);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
@@ -37,6 +52,8 @@ void setup() {
   Engine.attach(9);
   Engine.writeMicroseconds(pwm_value);
 
+  hx711.read();
+
   Serial.begin(115200);
   Serial.println("LCD...");
 
@@ -64,6 +81,7 @@ void setup() {
   lcd.print("Engine");
   lcd.setCursor(0, 1);
   lcd.print("tester");
+
   delay(500);
 }
 
@@ -96,8 +114,27 @@ void loop() {
 
   uint16_t inU = analogRead(0);
   uint16_t inI = analogRead(1);
-  float realU = float(inU) * 0.0454;
+  float realU = float(inU) * 0.0437;
   float realI = float(inI) * 0.0776;
+
+  int32_t hx_curr_reading = hx711.read();
+  if (hx_sample_counter < 10) {
+    hx_sample_counter++;
+    hx_zero_summ += hx_curr_reading;
+    hx_zero_value = hx_zero_summ / hx_sample_counter;
+  }
+
+  int16_t real_weight = (hx_curr_reading - hx_zero_value) / 500;
+
+  Serial.print("U=");
+  Serial.print(realU, 1);
+  Serial.print("V I=");
+  Serial.print(realI, 1);
+  Serial.print("A PWM=");
+  Serial.print(pwm_value);
+  Serial.print(" T=");
+  Serial.print(real_weight);
+  Serial.print("g ");
 
   dtostrf(realU, 4, 1, line1 + 2);
   line1[6] = 'V';
@@ -115,8 +152,10 @@ void loop() {
       line2[i + 12] = stop_line[i];
       i++;
     }
+    Serial.println("STOP");
   } else {
     for (uint8_t i = 12; i < 16; i++) line2[i] = ' ';
+    Serial.println("RUN");
   }
 
   line1[16] = 0;
@@ -126,10 +165,6 @@ void loop() {
   lcd.print(line1);
   lcd.setCursor(0, 1);
   lcd.print(line2);
-
-  Serial.print(line1);
-  Serial.print(" ");
-  Serial.println(line2);
 
   if (Serial.available() > 0) {
     static uint16_t ser_pwm_value = 0;
