@@ -30,8 +30,8 @@ uint16_t prev_pwm_value;
 
 boolean prev_key1, prev_key2, prev_key3;
 
-char line1[17] = "U=12.0V I=1.5A   \0";
-char line2[17] = "PWM=1000    STOP\0";
+char line1[17] = "U=12.0V I=1.5A  ";
+char line2[17] = "PWM=1000    STOP";
 
 char stop_line[] = "STOP";
 
@@ -114,7 +114,7 @@ void loop() {
 
   uint16_t inU = analogRead(0);
   uint16_t inI = analogRead(1);
-  float realU = float(inU) * 0.0437;
+  float realU = float(inU) * 0.0455;
   float realI = float(inI) * 0.0776;
 
   int32_t hx_curr_reading = hx711.read();
@@ -124,8 +124,9 @@ void loop() {
     hx_zero_value = hx_zero_summ / hx_sample_counter;
   }
 
-  int16_t real_weight = (hx_curr_reading - hx_zero_value) / 500;
+  int32_t real_weight = - (hx_curr_reading - hx_zero_value) / 810;
 
+  Serial.flush();
   Serial.print("U=");
   Serial.print(realU, 1);
   Serial.print("V I=");
@@ -181,5 +182,5 @@ void loop() {
     }
   }
 
-  delay(100);
+  // delay(100);
 }
