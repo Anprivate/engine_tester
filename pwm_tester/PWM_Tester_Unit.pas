@@ -4,10 +4,11 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
-  System.Classes, Vcl.Graphics,
+  System.Classes, System.Types,
+  Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, System.IniFiles, CPort, Vcl.StdCtrls,
   System.StrUtils, DateUtils,
-  CPortCtl, Vcl.ExtCtrls, Vcl.ComCtrls;
+  CPortCtl, Vcl.ExtCtrls, Vcl.ComCtrls, pngimage;
 
 const
   pwm_step = 100;
@@ -37,6 +38,8 @@ type
     ComboBoxAccum: TComboBox;
     TrackBarPWM: TTrackBar;
     LabelPWMAct: TLabel;
+    ButtonCSVtoPNG: TButton;
+    OpenDialog1: TOpenDialog;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure ComComboBox1Change(Sender: TObject);
@@ -46,6 +49,8 @@ type
     procedure Timer1Timer(Sender: TObject);
     procedure finishtest;
     procedure TrackBarPWMChange(Sender: TObject);
+    procedure ButtonCSVtoPNGClick(Sender: TObject);
+    procedure CSVtoPNG(infilename: string);
   private
     ini_filename: string;
     rxed_string: string;
@@ -59,6 +64,7 @@ type
     sample_counter: Integer;
     //
     csv_file: TextFile;
+    csv_filename: string;
   public
     { Public declarations }
   end;
@@ -88,9 +94,22 @@ begin
   end;
 end;
 
-procedure TForm1.ButtonStartTestClick(Sender: TObject);
+procedure TForm1.ButtonCSVtoPNGClick(Sender: TObject);
 var
-  csv_file_name: string;
+  tmpstr: string;
+begin
+  OpenDialog1.Title := 'Select csv file';
+  OpenDialog1.Filter := 'CSV files (*.csv)|*.CSV';
+
+  if OpenDialog1.Execute then
+  begin
+    tmpstr := OpenDialog1.FileName;
+    if FileExists(tmpstr) then
+      CSVtoPNG(tmpstr);
+  end;
+end;
+
+procedure TForm1.ButtonStartTestClick(Sender: TObject);
 begin
   curr_pwm := 1000;
   ComPort1.WriteStr('1000'#$0D);
@@ -110,9 +129,9 @@ begin
 
   Memo1.Clear;
   Memo1.Lines.Append('Test started');
-  csv_file_name := EditEngine.Text + '_' + EditPropeller.Text + '_' +
+  csv_filename := EditEngine.Text + '_' + EditPropeller.Text + '_' +
     ComboBoxAccum.Items[ComboBoxAccum.ItemIndex] + '.csv';
-  AssignFile(csv_file, csv_file_name);
+  AssignFile(csv_file, csv_filename);
   Rewrite(csv_file);
   Writeln(csv_file, EditEngine.Text + '_' + EditPropeller.Text + '_' +
     ComboBoxAccum.Items[ComboBoxAccum.ItemIndex]);
@@ -230,6 +249,77 @@ begin
   end;
 end;
 
+procedure TForm1.CSVtoPNG(infilename: string);
+var
+  OutBitmap: TBitmap;
+  png: TpngImage;
+  TmpList: TStringList;
+  TmpFile: TextFile;
+  tmpstr: string;
+  i: Integer;
+  OneRow: TStringDynArray;
+  rownum: Integer;
+  tw: Integer;
+begin
+  OutBitmap := TBitmap.Create;
+  TmpList := TStringList.Create;
+
+  AssignFile(TmpFile, infilename);
+  Reset(TmpFile);
+  while not EOF(TmpFile) do
+  begin
+    Readln(TmpFile, tmpstr);
+    TmpList.Add(tmpstr);
+  end;
+  CloseFile(TmpFile);
+
+  OutBitmap.PixelFormat := pf24bit;
+  OutBitmap.SetSize(6 * 64 + 1, TmpList.Count * 20 + 1);
+  OutBitmap.Canvas.Pen.Color := RGB(220, 220, 220);
+  for i := 0 to TmpList.Count do
+  begin
+    OutBitmap.Canvas.MoveTo(0, i * 20);
+    OutBitmap.Canvas.LineTo(6 * 64 + 1, i * 20);
+  end;
+  for i := 0 to 6 do
+  begin
+    if (i = 0) or (i = 6) then
+      OutBitmap.Canvas.MoveTo(64 * i, 0)
+    else
+      OutBitmap.Canvas.MoveTo(64 * i, 20);
+    OutBitmap.Canvas.LineTo(64 * i, TmpList.Count * 20);
+  end;
+
+  rownum := 0;
+  OutBitmap.Canvas.Font.Size := 10;
+  OutBitmap.Canvas.TextOut(3, 3, StringReplace(TmpList.Strings[rownum], ';', '',
+    [rfReplaceAll]));
+  inc(rownum);
+
+  while rownum < TmpList.Count do
+  begin
+    OneRow := SplitString(TmpList.Strings[rownum], ';');
+    for i := 0 to Length(OneRow) - 1 do
+    begin
+      tw := OutBitmap.Canvas.TextWidth(OneRow[i]);
+      if tw < 64 then
+        OutBitmap.Canvas.TextOut(1 + i * 64 + ((64 - tw) div 2),
+          3 + rownum * 20, OneRow[i])
+      else
+        OutBitmap.Canvas.TextOut(1 + i * 64, 3 + rownum * 20, OneRow[i]);
+    end;
+    inc(rownum);
+  end;
+
+  png := TpngImage.Create;
+  png.Assign(OutBitmap);
+  png.SaveToFile(ChangeFileExt(infilename, '.png'));
+  png.Free;
+
+  OutBitmap.Free;
+  TmpList.Free;
+end;
+
 procedure TForm1.finishtest;
 begin
   Memo1.Lines.Append('Test stopped');
@@ -242,6 +332,7 @@ begin
   ComPort1.WriteStr('1000'#$0D);
   Timer1.Enabled := false;
   CloseFile(csv_file);
+  CSVtoPNG(csv_filename);
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);

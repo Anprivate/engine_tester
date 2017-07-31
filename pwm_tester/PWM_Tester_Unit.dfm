@@ -191,6 +191,15 @@ object Form1: TForm1
     TickMarks = tmTopLeft
     OnChange = TrackBarPWMChange
   end
+  object ButtonCSVtoPNG: TButton
+    Left = 335
+    Top = 8
+    Width = 75
+    Height = 25
+    Caption = 'CSV to PNG'
+    TabOrder = 8
+    OnClick = ButtonCSVtoPNGClick
+  end
   object ComPort1: TComPort
     BaudRate = br115200
     Port = 'COM1'
@@ -215,6 +224,10 @@ object Form1: TForm1
     Interval = 100
     OnTimer = Timer1Timer
     Left = 280
+    Top = 8
+  end
+  object OpenDialog1: TOpenDialog
+    Left = 488
     Top = 8
   end
 end
