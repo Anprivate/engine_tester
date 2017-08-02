@@ -3,12 +3,12 @@ unit PWM_Tester_Unit;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
-  System.Classes, System.Types,
-  Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, System.IniFiles, CPort, Vcl.StdCtrls,
-  System.StrUtils, DateUtils,
-  CPortCtl, Vcl.ExtCtrls, Vcl.ComCtrls, pngimage;
+  Winapi.Windows, Winapi.Messages,
+  System.SysUtils, System.Variants, System.Classes, System.Types, System.Math,
+  System.IniFiles, System.StrUtils, System.DateUtils,
+  Vcl.Dialogs, Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Controls,
+  Vcl.Graphics, Vcl.Forms,
+  CPort, CPortCtl, Vcl.imaging.pngimage;
 
 const
   pwm_step = 100;
@@ -40,6 +40,8 @@ type
     LabelPWMAct: TLabel;
     ButtonCSVtoPNG: TButton;
     OpenDialog1: TOpenDialog;
+    EditEngineWeight: TEdit;
+    Label5: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure ComComboBox1Change(Sender: TObject);
@@ -62,9 +64,11 @@ type
     //
     summ_u, summ_i, summ_t: real;
     sample_counter: Integer;
+    engine_weight: Integer;
     //
     csv_file: TextFile;
     csv_filename: string;
+    font_size: Integer;
   public
     { Public declarations }
   end;
@@ -111,6 +115,9 @@ end;
 
 procedure TForm1.ButtonStartTestClick(Sender: TObject);
 begin
+  if not trystrtoint(EditEngineWeight.Text, engine_weight) then
+    Exit;
+
   curr_pwm := 1000;
   ComPort1.WriteStr('1000'#$0D);
 
@@ -133,9 +140,13 @@ begin
     ComboBoxAccum.Items[ComboBoxAccum.ItemIndex] + '.csv';
   AssignFile(csv_file, csv_filename);
   Rewrite(csv_file);
-  Writeln(csv_file, EditEngine.Text + '_' + EditPropeller.Text + '_' +
-    ComboBoxAccum.Items[ComboBoxAccum.ItemIndex]);
-  Writeln(csv_file, 'PWM;U (V);I (A);P (W);Thrust (g); E (g/W)');
+  Writeln(csv_file, 'Engine: ' + EditEngine.Text);
+  Writeln(csv_file, 'Engine weight (EW): ' + inttostr(engine_weight) + ' g');
+  Writeln(csv_file, 'Propeller: ' + EditPropeller.Text);
+  Writeln(csv_file, 'Accumulator: ' + ComboBoxAccum.Items
+    [ComboBoxAccum.ItemIndex]);
+  Writeln(csv_file,
+    'PWM;U (V);I (A);P (W);Thrust (g);E (g/W);T-EW (g);Eabs (g/W)');
 end;
 
 procedure TForm1.ComComboBox1Change(Sender: TObject);
@@ -256,12 +267,18 @@ var
   TmpList: TStringList;
   TmpFile: TextFile;
   tmpstr: string;
-  i: Integer;
+  i, j: Integer;
   OneRow: TStringDynArray;
   rownum: Integer;
   tw: Integer;
+  RowCount, ColumnCount: Integer;
+  ColumnWidth: array of Integer;
+  RowHeight: Integer;
+  tmp_colw, tmp_rowh: Integer;
+  w_inc: Integer;
+  x_off: Integer;
 begin
-  OutBitmap := TBitmap.Create;
+  // reading csv file to StringList
   TmpList := TStringList.Create;
 
   AssignFile(TmpFile, infilename);
@@ -273,42 +290,109 @@ begin
   end;
   CloseFile(TmpFile);
 
+  // calculating counts of rows and columns
+  ColumnCount := 0;
+  for i := 0 to TmpList.Count - 1 do
+  begin
+    OneRow := SplitString(TmpList.Strings[i], ';');
+    if Length(OneRow) > ColumnCount then
+      ColumnCount := Length(OneRow);
+  end;
+
+  // initialyzing
+  SetLength(ColumnWidth, ColumnCount);
+  for i := 0 to ColumnCount - 1 do
+    ColumnWidth[i] := 0;
+  RowHeight := 0;
+
+  // calculating width for each column
+  OutBitmap := TBitmap.Create;
   OutBitmap.PixelFormat := pf24bit;
-  OutBitmap.SetSize(6 * 64 + 1, TmpList.Count * 20 + 1);
-  OutBitmap.Canvas.Pen.Color := RGB(220, 220, 220);
+  OutBitmap.SetSize(500, 500);
+  OutBitmap.Canvas.Font.Size := font_size;
+  for i := 0 to TmpList.Count - 1 do
+  begin
+    OneRow := SplitString(TmpList.Strings[i], ';');
+    // processing only normal strings, not titles
+    if (Length(OneRow) > 1) and (OneRow[1] <> '') then
+    begin
+      for j := 0 to Length(OneRow) - 1 do
+      begin
+        tmp_rowh := OutBitmap.Canvas.TextHeight(OneRow[j]);
+        tmp_colw := OutBitmap.Canvas.TextWidth(OneRow[j]);
+        if tmp_rowh > RowHeight then
+          RowHeight := tmp_rowh;
+        if tmp_colw > ColumnWidth[j] then
+          ColumnWidth[j] := tmp_colw;
+      end;
+    end;
+  end;
+
+  // total table size calculation
+  tmp_rowh := (RowHeight + 2 * (RowHeight div 4) + 1) + 1;
+
+  tmp_colw := 1;
+  for i := 0 to Length(ColumnWidth) - 1 do
+  begin
+    ColumnWidth[i] := ColumnWidth[i] + 2 * (RowHeight div 4) + 1;
+    tmp_colw := tmp_colw + ColumnWidth[i];
+  end;
+  tw := OutBitmap.Canvas.TextWidth(StringReplace(TmpList.Strings[0], ';', '',
+    [rfReplaceAll])) + 2 * (RowHeight div 4) + 2;
+  // title is too large - proportional increment for all columns
+  if tmp_colw < tw then
+  begin
+    SetRoundMode(rmUp);
+    w_inc := round((tw - tmp_colw) / Length(ColumnWidth));
+    tmp_colw := 1;
+    for i := 0 to Length(ColumnWidth) - 1 do
+    begin
+      ColumnWidth[i] := ColumnWidth[i] + w_inc;
+      tmp_colw := tmp_colw + ColumnWidth[i];
+    end;
+  end;
+  OutBitmap.SetSize(tmp_colw, tmp_rowh * TmpList.Count + 1);
+
+  // drawing rows separators
+  OutBitmap.Canvas.Pen.Color := RGB(128, 128, 128);
   for i := 0 to TmpList.Count do
   begin
-    OutBitmap.Canvas.MoveTo(0, i * 20);
-    OutBitmap.Canvas.LineTo(6 * 64 + 1, i * 20);
-  end;
-  for i := 0 to 6 do
-  begin
-    if (i = 0) or (i = 6) then
-      OutBitmap.Canvas.MoveTo(64 * i, 0)
-    else
-      OutBitmap.Canvas.MoveTo(64 * i, 20);
-    OutBitmap.Canvas.LineTo(64 * i, TmpList.Count * 20);
+    OutBitmap.Canvas.MoveTo(0, i * tmp_rowh);
+    OutBitmap.Canvas.LineTo(OutBitmap.Width, i * tmp_rowh);
   end;
 
-  rownum := 0;
-  OutBitmap.Canvas.Font.Size := 10;
-  OutBitmap.Canvas.TextOut(3, 3, StringReplace(TmpList.Strings[rownum], ';', '',
-    [rfReplaceAll]));
-  inc(rownum);
+  // drawing columns separators
+  OutBitmap.Canvas.MoveTo(0, 0);
+  OutBitmap.Canvas.LineTo(0, OutBitmap.Height);
+  OutBitmap.Canvas.MoveTo(OutBitmap.Width - 1, 0);
+  OutBitmap.Canvas.LineTo(OutBitmap.Width - 1, OutBitmap.Height);
 
-  while rownum < TmpList.Count do
+  // text in cells
+  OutBitmap.Canvas.Font.Size := font_size;
+
+  for rownum := 0 to TmpList.Count - 1 do
   begin
     OneRow := SplitString(TmpList.Strings[rownum], ';');
-    for i := 0 to Length(OneRow) - 1 do
+    if (Length(OneRow) < Length(ColumnWidth)) or
+      ((Length(OneRow) > 1) and (OneRow[1] = '')) then
     begin
-      tw := OutBitmap.Canvas.TextWidth(OneRow[i]);
-      if tw < 64 then
-        OutBitmap.Canvas.TextOut(1 + i * 64 + ((64 - tw) div 2),
-          3 + rownum * 20, OneRow[i])
-      else
-        OutBitmap.Canvas.TextOut(1 + i * 64, 3 + rownum * 20, OneRow[i]);
+      OutBitmap.Canvas.TextOut(RowHeight div 4 + 1, RowHeight div 4 + 1 +
+        tmp_rowh * rownum, StringReplace(TmpList.Strings[rownum], ';', '',
+        [rfReplaceAll]));
+    end
+    else
+    begin
+      x_off := 1;
+      for i := 0 to Length(OneRow) - 1 do
+      begin
+        tw := OutBitmap.Canvas.TextWidth(OneRow[i]);
+        OutBitmap.Canvas.TextOut(x_off + (ColumnWidth[i] - tw) div 2,
+          RowHeight div 4 + 1 + tmp_rowh * rownum, OneRow[i]);
+        OutBitmap.Canvas.MoveTo(x_off - 1, tmp_rowh * rownum);
+        OutBitmap.Canvas.LineTo(x_off - 1, tmp_rowh * (rownum + 1));
+        inc(x_off, ColumnWidth[i]);
+      end;
     end;
-    inc(rownum);
   end;
 
   png := TpngImage.Create;
@@ -361,6 +445,7 @@ begin
     EditEngine.Text := ini.ReadString('common', 'engine', '');
     EditPropeller.Text := ini.ReadString('common', 'propeller', '');
     ComboBoxAccum.ItemIndex := ini.ReadInteger('common', 'accum', 0);
+    font_size := ini.ReadInteger('common', 'font_size', 12);
   finally
     ini.Free;
   end;
@@ -391,7 +476,7 @@ end;
 
 procedure TForm1.Timer1Timer(Sender: TObject);
 var
-  m_u, m_i, m_p, m_t, m_e: real;
+  m_u, m_i, m_p, m_t, m_t_abs, m_e, m_e_abs: real;
 begin
   if not test_started then
     Exit;
@@ -402,15 +487,23 @@ begin
     m_i := summ_i / sample_counter;
     m_p := m_u * m_i;
     m_t := summ_t / sample_counter;
+    m_t_abs := m_t - engine_weight;
     if m_p > 1 then
-      m_e := m_t / m_p
+    begin
+      m_e := m_t / m_p;
+      m_e_abs := m_t_abs / m_p;
+    end
     else
+    begin
       m_e := 0;
+      m_e_abs := 0;
+    end;
     Memo1.Lines.Append
-      (format('PWM=%d Samples=%d U=%.1fV I=%.1fA P=%.1fW T=%.0fg E=%.1fg/W',
-      [curr_pwm, sample_counter, m_u, m_i, m_p, m_t, m_e], fs));
-    Writeln(csv_file, format('%d;%.1f;%.1f;%.1f;%.0f;%.1f', [curr_pwm, m_u, m_i,
-      m_p, m_t, m_e]));
+      (format('PWM=%d Samples=%d U=%.1fV I=%.1fA P=%.1fW T=%.0fg E=%.1fg/W Tabs=%.0fg Eabs=%.1fg/W',
+      [curr_pwm, sample_counter, m_u, m_i, m_p, m_t, m_e, m_t_abs,
+      m_e_abs], fs));
+    Writeln(csv_file, format('%d;%.1f;%.1f;%.1f;%.0f;%.1f;%.0f;%.1f',
+      [curr_pwm, m_u, m_i, m_p, m_t, m_e, m_t_abs, m_e_abs]));
 
     summ_u := 0;
     summ_i := 0;

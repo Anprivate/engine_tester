@@ -2,7 +2,7 @@ object Form1: TForm1
   Left = 0
   Top = 0
   Caption = 'Form1'
-  ClientHeight = 485
+  ClientHeight = 557
   ClientWidth = 630
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -75,32 +75,39 @@ object Form1: TForm1
     Caption = 'T'
   end
   object Label2: TLabel
-    Left = 155
-    Top = 101
+    Left = 139
+    Top = 105
     Width = 36
     Height = 13
     Caption = 'Engine:'
   end
   object Label3: TLabel
-    Left = 339
-    Top = 101
-    Width = 26
+    Left = 400
+    Top = 105
+    Width = 46
     Height = 13
-    Caption = 'Prop:'
+    Caption = 'Propeller:'
   end
   object Label4: TLabel
-    Left = 515
-    Top = 101
+    Left = 576
+    Top = 103
     Width = 35
     Height = 13
     Caption = 'Accum:'
   end
   object LabelPWMAct: TLabel
     Left = 8
-    Top = 144
+    Top = 168
     Width = 24
     Height = 13
     Caption = '1000'
+  end
+  object Label5: TLabel
+    Left = 312
+    Top = 105
+    Width = 71
+    Height = 13
+    Caption = 'Engine weight:'
   end
   object ComComboBox1: TComComboBox
     Left = 8
@@ -125,16 +132,16 @@ object Form1: TForm1
   end
   object Memo1: TMemo
     Left = 8
-    Top = 178
+    Top = 216
     Width = 614
-    Height = 281
+    Height = 323
     Lines.Strings = (
       'Memo1')
     TabOrder = 2
   end
   object ButtonStartTest: TButton
     Left = 8
-    Top = 96
+    Top = 120
     Width = 113
     Height = 25
     Caption = #1053#1072#1095#1072#1090#1100' '#1080#1089#1087#1099#1090#1072#1085#1080#1077
@@ -143,25 +150,25 @@ object Form1: TForm1
     OnClick = ButtonStartTestClick
   end
   object EditEngine: TEdit
-    Left = 197
-    Top = 98
-    Width = 121
+    Left = 139
+    Top = 124
+    Width = 157
     Height = 21
     TabOrder = 4
     Text = 'EditEngine'
   end
   object EditPropeller: TEdit
-    Left = 371
-    Top = 98
-    Width = 121
+    Left = 400
+    Top = 124
+    Width = 161
     Height = 21
     TabOrder = 5
     Text = 'Edit1'
   end
   object ComboBoxAccum: TComboBox
-    Left = 552
-    Top = 98
-    Width = 70
+    Left = 576
+    Top = 124
+    Width = 46
     Height = 21
     Style = csDropDownList
     TabOrder = 6
@@ -174,7 +181,7 @@ object Form1: TForm1
   end
   object TrackBarPWM: TTrackBar
     Left = 80
-    Top = 127
+    Top = 151
     Width = 542
     Height = 45
     LineSize = 5
@@ -199,6 +206,14 @@ object Form1: TForm1
     Caption = 'CSV to PNG'
     TabOrder = 8
     OnClick = ButtonCSVtoPNGClick
+  end
+  object EditEngineWeight: TEdit
+    Left = 312
+    Top = 124
+    Width = 71
+    Height = 21
+    TabOrder = 9
+    Text = '0'
   end
   object ComPort1: TComPort
     BaudRate = br115200
