@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{55DEF1DC-D7A1-4C32-94A4-47DEAF6EB31C}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="PWM_tester.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="CSV_convert.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="PWM_tester">
+        <MSBuild Projects="PWM_tester.dproj"/>
+    </Target>
+    <Target Name="PWM_tester:Clean">
+        <MSBuild Projects="PWM_tester.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="PWM_tester:Make">
+        <MSBuild Projects="PWM_tester.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="CSV_convert">
+        <MSBuild Projects="CSV_convert.dproj"/>
+    </Target>
+    <Target Name="CSV_convert:Clean">
+        <MSBuild Projects="CSV_convert.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="CSV_convert:Make">
+        <MSBuild Projects="CSV_convert.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="PWM_tester;CSV_convert"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="PWM_tester:Clean;CSV_convert:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="PWM_tester:Make;CSV_convert:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
